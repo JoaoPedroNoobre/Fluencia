@@ -1,0 +1,924 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fluência — painel privado de estudos</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=Work+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+<style>
+  :root{
+    --bg:#1D3229;
+    --panel:#25392F;
+    --panel-2:#2C4238;
+    --line: rgba(237,234,224,0.10);
+    --text:#ECE8DC;
+    --muted:#A3B2A8;
+    --muted-2:#71857A;
+    --yellow:#E7C468;
+    --yellow-soft:#F0D48C;
+    --green-soft:#8FBF8A;
+    --coral:#E2836B;
+    --blue:#82AACB;
+    --r-lg: 28px;
+    --r-md: 18px;
+    --r-pill: 999px;
+    --serif: 'Newsreader', serif;
+    --sans: 'Work Sans', sans-serif;
+    --mono: 'JetBrains Mono', monospace;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:var(--sans);
+    line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+    overflow-x:hidden;
+  }
+  a{color:inherit;}
+  ::selection{background:rgba(231,196,104,0.30);}
+  button{font-family:inherit;}
+  svg{ display:block; }
+
+  /* ---------- decorative organic blobs ---------- */
+  .blob{
+    position:absolute;
+    filter:blur(50px);
+    opacity:0.16;
+    z-index:0;
+    pointer-events:none;
+  }
+  .blob-1{ width:520px; height:420px; top:-160px; right:-120px;
+    background:var(--yellow); border-radius:62% 38% 55% 45% / 48% 55% 45% 52%; }
+  .blob-2{ width:380px; height:380px; top:280px; left:-160px;
+    background:var(--green-soft); border-radius:45% 55% 40% 60% / 55% 40% 60% 45%; opacity:0.10; }
+  .blob-3{ width:300px; height:280px; bottom:120px; right:-100px;
+    background:var(--blue); border-radius:55% 45% 60% 40% / 40% 55% 45% 60%; opacity:0.08; }
+
+  .wrap{ max-width:1180px; margin:0 auto; padding:34px 28px 80px; position:relative; z-index:1; }
+
+  header.top{
+    display:flex; align-items:baseline; justify-content:space-between;
+    padding-bottom:20px; margin-bottom:30px; flex-wrap:wrap; gap:12px;
+  }
+  .brand{ font-family:var(--serif); font-size:27px; font-weight:500; display:flex; align-items:center; gap:10px; }
+  .brand span{ color:var(--yellow); }
+  .top-meta{ font-size:13px; color:var(--muted); text-align:right; }
+  .top-meta .date{ font-family:var(--mono); color:var(--muted-2); }
+
+  .icon{ width:20px; height:20px; stroke:currentColor; fill:none; stroke-width:1.6; stroke-linecap:round; stroke-linejoin:round; flex-shrink:0; }
+  .icon-lg{ width:30px; height:30px; }
+
+  /* ---------- hero ---------- */
+  .hero{
+    position:relative;
+    background:linear-gradient(155deg, var(--panel), var(--panel-2));
+    border-radius: 48px 28px 48px 28px;
+    padding:38px 40px;
+    margin-bottom:40px;
+    overflow:hidden;
+    display:grid; grid-template-columns: 1.3fr 1fr; gap:40px; align-items:end;
+  }
+  .hero::before{
+    content:"";
+    position:absolute; width:260px; height:260px; top:-100px; right:60px;
+    background:radial-gradient(circle, rgba(231,196,104,0.28), transparent 70%);
+    border-radius:50%;
+  }
+  .hero-inner{ position:relative; z-index:1; }
+  .hero-label{ font-size:13px; color:var(--muted); margin-bottom:8px; display:flex; align-items:center; gap:8px; }
+  .hero-value{
+    font-family:var(--serif); font-size:clamp(44px,6vw,68px); font-weight:500;
+    letter-spacing:-0.01em; font-variant-numeric:tabular-nums; display:flex; align-items:baseline; gap:10px;
+  }
+  .hero-value .unit{ font-size:0.36em; color:var(--muted); font-family:var(--sans); }
+  .hero-sub{ margin-top:18px; display:flex; gap:28px; flex-wrap:wrap; position:relative; z-index:1; }
+  .hero-sub .stat{ font-size:13.5px; color:var(--muted); display:flex; align-items:center; gap:8px; }
+  .hero-sub .stat b{ font-family:var(--mono); font-size:16px; color:var(--text); font-weight:500; }
+  .hero-sub .stat .icon{ color:var(--yellow); width:17px; height:17px; }
+
+  .goal-bar-wrap{ margin-top:22px; max-width:360px; position:relative; z-index:1; }
+  .goal-bar-label{ display:flex; justify-content:space-between; font-size:12.5px; color:var(--muted); margin-bottom:7px; }
+  .goal-bar{ height:12px; border-radius:var(--r-pill); background:rgba(0,0,0,0.18); overflow:hidden; }
+  .goal-bar > div{ height:100%; border-radius:var(--r-pill); background:linear-gradient(90deg, var(--green-soft), var(--yellow)); transition: width .4s ease; }
+  .study-entry{
+    margin-top:22px; max-width:520px; padding:15px 16px; border:1px solid var(--line);
+    background:rgba(0,0,0,0.12); border-radius:18px;
+  }
+  .study-entry-title{ font-size:12.5px; color:var(--yellow); margin-bottom:10px; font-weight:600; }
+  .study-entry-row{ display:flex; align-items:flex-end; gap:9px; flex-wrap:wrap; }
+  .study-entry label{ display:flex; flex-direction:column; gap:5px; }
+  .study-entry label span{ font-size:10.5px; color:var(--muted-2); }
+  .study-entry input{
+    width:76px; padding:9px 10px; border:1px solid var(--line); border-radius:12px;
+    background:var(--panel-2); color:var(--text); font-family:var(--mono); font-size:13px;
+  }
+  .study-entry input:focus{ outline:2px solid var(--yellow); outline-offset:1px; }
+  .study-entry-hint{ margin-top:9px; color:var(--muted-2); font-size:10.5px; }
+
+
+  .hero-right{ display:flex; flex-direction:column; gap:14px; align-items:flex-end; text-align:right; position:relative; z-index:1; }
+  .hero-right p{ margin:0; font-size:13px; color:var(--muted); max-width:300px; }
+  .io-buttons{ display:flex; gap:10px; }
+  .btn{
+    background:rgba(255,255,255,0.04); border:1px solid var(--line); color:var(--text);
+    padding:10px 18px; border-radius:var(--r-pill); font-size:13px; cursor:pointer;
+    display:inline-flex; align-items:center; gap:7px;
+    transition: transform .15s ease, background .15s ease, border-color .15s ease;
+  }
+  .btn .icon{ width:15px; height:15px; }
+  .btn:hover{ border-color:var(--yellow); background:rgba(231,196,104,0.08); transform:translateY(-1px); }
+  .btn:focus-visible{ outline:2px solid var(--yellow); outline-offset:2px; }
+  .btn.primary{ border-color:var(--yellow); color:var(--yellow); background:rgba(231,196,104,0.10); }
+  .btn.small{ padding:7px 14px; font-size:12.5px; }
+
+  h2.section-title{
+    font-family:var(--serif); font-size:19px; font-weight:500; margin:0 0 18px;
+    display:flex; align-items:center; gap:10px; justify-content:space-between; flex-wrap:wrap;
+  }
+  h2.section-title .title-left{ display:flex; align-items:center; gap:10px; }
+  h2.section-title .icon{ color:var(--yellow); }
+  h2.section-title .hint{ font-size:12.5px; color:var(--muted-2); font-family:var(--sans); font-weight:400; }
+
+  .charts-row{ display:grid; grid-template-columns: 1fr 1.3fr; gap:24px; margin-bottom:46px; }
+  .panel{ background:var(--panel); border-radius:var(--r-lg); padding:26px; position:relative; overflow:hidden; }
+  .chart-box{ position:relative; height:220px; }
+  .alloc-legend{ display:flex; flex-wrap:wrap; gap:8px 16px; margin-top:16px; font-size:12.5px; color:var(--muted); }
+  .alloc-legend .dot{ display:inline-block; width:9px; height:9px; border-radius:50%; margin-right:6px; position:relative; top:-1px; }
+
+  section{ margin-bottom:46px; }
+
+  /* ---------- schedule: day cards ---------- */
+  .schedule-grid{
+    display:grid; grid-template-columns: repeat(auto-fit, minmax(180px,1fr));
+    gap:16px;
+  }
+  .day-card{
+    background:var(--panel); border-radius:var(--r-md); padding:16px;
+    display:flex; flex-direction:column; gap:10px; min-height:120px;
+  }
+  .day-card h3{
+    margin:0; font-size:13.5px; font-weight:600; color:var(--yellow);
+    display:flex; align-items:center; gap:6px;
+  }
+  .day-card h3 .icon{ width:14px; height:14px; }
+  .session{
+    background:var(--panel-2); border-radius:14px; padding:10px 12px;
+    font-size:12.5px; display:flex; flex-direction:column; gap:5px; position:relative;
+  }
+  .session .row1{ display:flex; justify-content:space-between; align-items:center; gap:6px; }
+  .session input.time{ background:transparent; border:none; color:var(--text); font-family:var(--mono); font-size:12.5px; width:52px; padding:0; }
+  .session input.activity{ background:transparent; border:none; color:var(--text); font-size:12.5px; width:100%; padding:2px 0; }
+  .session input.time:focus, .session input.activity:focus{ outline:none; border-bottom:1px solid var(--yellow); }
+  .lang-pill{
+    font-size:10.5px; padding:2px 9px; border-radius:var(--r-pill); white-space:nowrap;
+    display:inline-flex; align-items:center; gap:4px;
+  }
+  .lang-pill .dot{ width:6px; height:6px; border-radius:50%; }
+  .session .dur{ font-family:var(--mono); font-size:11px; color:var(--muted-2); }
+  .session .row-del{ position:absolute; top:4px; right:4px; background:none; border:none; color:var(--muted-2); cursor:pointer; font-size:12px; padding:2px 5px; opacity:0; transition:opacity .15s; }
+  .session:hover .row-del{ opacity:1; }
+  select.lang-select{
+    background:transparent; border:none; color:inherit; font-size:10.5px; font-family:var(--sans);
+  }
+  .day-add{
+    background:transparent; border:1px dashed var(--line); color:var(--muted-2);
+    border-radius:14px; padding:8px; font-size:12px; cursor:pointer;
+  }
+  .day-add:hover{ color:var(--yellow); border-color:var(--yellow); }
+
+  /* ---------- vocab: flashcards ---------- */
+  .flash-grid{
+    display:grid; grid-template-columns: repeat(auto-fill, minmax(200px,1fr));
+    gap:18px;
+  }
+  .flashcard{
+    background:var(--panel); border-radius:22px; padding:18px;
+    display:flex; flex-direction:column; gap:10px;
+    box-shadow: 0 10px 24px rgba(0,0,0,0.14);
+    transition: transform .18s ease;
+  }
+  .flashcard:nth-child(odd){ transform:rotate(-0.6deg); }
+  .flashcard:nth-child(even){ transform:rotate(0.6deg); }
+  .flashcard:hover{ transform:rotate(0deg) translateY(-2px); }
+  .flash-top{ display:flex; justify-content:space-between; align-items:flex-start; gap:6px; }
+  .flash-pills{ display:flex; gap:6px; flex-wrap:wrap; }
+  .nivel-pill{ font-size:10.5px; padding:2px 9px; border-radius:var(--r-pill); }
+  .nivel-novo{ background:rgba(130,170,203,0.18); color:var(--blue); }
+  .nivel-aprendendo{ background:rgba(231,196,104,0.18); color:var(--yellow); }
+  .nivel-dominado{ background:rgba(143,191,138,0.18); color:var(--green-soft); }
+  select.nivel-select{ background:transparent; border:none; font-size:10.5px; font-family:var(--sans); }
+  .flashcard input.word{
+    background:transparent; border:none; color:var(--text); font-family:var(--serif);
+    font-size:19px; font-weight:500; padding:0; width:100%;
+  }
+  .flashcard input.trad{
+    background:transparent; border:none; color:var(--muted); font-size:13px; padding:0; width:100%;
+  }
+  .flashcard input.word:focus, .flashcard input.trad:focus{ outline:none; }
+  .flash-bottom{ display:flex; justify-content:space-between; align-items:center; margin-top:2px; }
+  .flash-bottom input[type=date]{
+    background:var(--panel-2); border:none; border-radius:var(--r-pill); color:var(--muted);
+    font-family:var(--mono); font-size:11px; padding:4px 10px;
+  }
+  .flash-bottom input.due{ color:var(--coral); }
+  .flash-bottom select.idioma-select{
+    background:transparent; border:none; font-size:11px; color:var(--muted-2); font-family:var(--sans);
+  }
+  .flashcard .row-del{ background:none; border:none; color:var(--muted-2); cursor:pointer; font-size:13px; }
+  .flashcard .row-del:hover{ color:var(--coral); }
+
+  /* ---------- goals & diary ---------- */
+  .lower-grid{ display:grid; grid-template-columns: 1fr 1fr; gap:24px; margin-bottom:20px; }
+  .goal-item{ padding:14px 0; border-bottom:1px solid var(--line); }
+  .goal-item:last-child{ border-bottom:none; }
+  .goal-top{ display:flex; justify-content:space-between; font-size:14px; margin-bottom:9px; gap:10px; align-items:center; }
+  .goal-top .icon{ color:var(--green-soft); }
+  .goal-top input.goal-name{ background:transparent; border:none; color:var(--text); font-size:14px; font-weight:500; flex:1; }
+  .goal-top input.goal-prazo{ background:transparent; border:none; color:var(--muted); font-size:12px; font-family:var(--mono); text-align:right; width:80px; }
+  .goal-bar-row{ display:flex; align-items:center; gap:10px; }
+  .goal-bar-row .goal-bar{ flex:1; height:9px; }
+  .goal-bar-row input[type=range]{ flex:1; accent-color:var(--yellow); }
+  .goal-bar-row .pct{ font-family:var(--mono); font-size:12px; color:var(--muted); width:36px; text-align:right; }
+
+  textarea#diario{
+    width:100%; min-height:190px; background:var(--panel-2); border:none;
+    border-radius:var(--r-md); color:var(--text); font-family:var(--sans); font-size:13.5px;
+    padding:16px; resize:vertical;
+  }
+  textarea#diario:focus{ outline:2px solid var(--yellow); outline-offset:2px; }
+
+  footer{
+    margin-top:50px; padding-top:20px; border-top:1px solid var(--line);
+    font-size:12.5px; color:var(--muted-2); display:flex; justify-content:space-between;
+    flex-wrap:wrap; gap:10px;
+  }
+  input[type=file]{ display:none; }
+
+  @media (max-width: 860px){
+    .hero{ grid-template-columns:1fr; border-radius:32px; padding:28px; }
+    .hero-right{ align-items:flex-start; text-align:left; }
+    .charts-row{ grid-template-columns:1fr; }
+    .lower-grid{ grid-template-columns:1fr; }
+    .blob{ display:none; }
+  }
+  @media (prefers-reduced-motion: reduce){ *{ animation:none !important; transition:none !important; } }
+</style>
+</head>
+<body>
+
+<div class="blob blob-1"></div>
+<div class="blob blob-2"></div>
+<div class="blob blob-3"></div>
+
+<div class="wrap">
+
+  <header class="top">
+    <div class="brand">
+      <svg class="icon icon-lg" viewBox="0 0 24 24"><path d="M4 19c4-1 6-4 6-8V5c0 4-2 6-6 6z"/><path d="M20 19c-4-1-6-4-6-8V5c0 4 2 6 6 6z"/></svg>
+      Fluência<span>.</span>
+    </div>
+    <div class="top-meta">painel privado de estudos<br><span class="date" id="today-date"></span></div>
+  </header>
+
+  <section class="hero">
+    <div class="hero-inner">
+      <div class="hero-label">
+        <svg class="icon" viewBox="0 0 24 24" style="color:var(--yellow)"><path d="M12 2c1 3-3 4-3 8a3 3 0 0 0 6 0c0-1-.5-2-1-2.5 1.5.5 3 2.5 3 5.5a5 5 0 0 1-10 0c0-4 3-5 5-11z"/></svg>
+        sequência atual
+      </div>
+      <div class="hero-value" id="hero-streak">0<span class="unit">dias seguidos</span></div>
+      <div class="hero-sub">
+        <div class="stat"><svg class="icon" viewBox="0 0 24 24"><path d="M4 19.5V6a2 2 0 0 1 2-2h13v15H6a2 2 0 0 0-2 2Z"/><path d="M6 19.5A2 2 0 0 1 8 17.5h11"/></svg> palavras dominadas <b id="hero-mastered">—</b></div>
+        <div class="stat"><svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg> para revisar hoje <b id="hero-review">—</b></div>
+        <div class="stat"><svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-3.5 3.6-6 8-6s8 2.5 8 6"/></svg> idiomas ativos <b id="hero-langs">—</b></div>
+        <div class="stat"><svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg> estudado hoje <b id="hero-today-time">—</b></div>
+      </div>
+      <div class="study-entry">
+        <div class="study-entry-title">Registrar estudo de hoje</div>
+        <div class="study-entry-row">
+          <label>
+            <span>Horas</span>
+            <input id="study-hours" type="number" min="0" max="24" value="0" inputmode="numeric">
+          </label>
+          <label>
+            <span>Minutos</span>
+            <input id="study-minutes" type="number" min="0" max="59" value="0" inputmode="numeric">
+          </label>
+          <button class="btn primary" id="btn-register-study">Registrar</button>
+        </div>
+        <div class="study-entry-hint">Informe o tempo estudado. O painel converte tudo para minutos e atualiza a meta, gráfico e histórico.</div>
+      </div>
+
+      <div class="goal-bar-wrap">
+        <div class="goal-bar-label"><span>Meta de hoje</span><span id="goal-today-text">—</span></div>
+        <div class="goal-bar"><div id="goal-today-fill" style="width:0%"></div></div>
+      </div>
+    </div>
+    <div class="hero-right">
+      <p>Os dados abaixo ficam apenas na memória desta página. Exporte para salvar — ou edite os valores iniciais direto no código, no VS Code.</p>
+      <div class="io-buttons">
+        <button class="btn" id="btn-import">
+          <svg class="icon" viewBox="0 0 24 24"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M5 21h14"/></svg>
+          Importar
+        </button>
+        <button class="btn primary" id="btn-export">
+          <svg class="icon" viewBox="0 0 24 24"><path d="M12 15V3"/><path d="M7 8l5-5 5 5"/><path d="M5 21h14"/></svg>
+          Exportar
+        </button>
+      </div>
+      <input type="file" id="file-input" accept="application/json">
+    </div>
+  </section>
+
+  <section class="charts-row">
+    <div class="panel">
+      <h2 class="section-title">
+        <span class="title-left"><svg class="icon" viewBox="0 0 24 24"><path d="M4 19.5V6a2 2 0 0 1 2-2h13v15H6a2 2 0 0 0-2 2Z"/><path d="M6 19.5A2 2 0 0 1 8 17.5h11"/></svg> Vocabulário</span>
+        <span class="hint">por idioma</span>
+      </h2>
+      <div class="chart-box"><canvas id="chart-alloc"></canvas></div>
+      <div class="alloc-legend" id="alloc-legend"></div>
+    </div>
+    <div class="panel">
+      <h2 class="section-title">
+        <span class="title-left"><svg class="icon" viewBox="0 0 24 24"><path d="M4 19h16"/><path d="M7 19V9M12 19V5M17 19v12"/></svg> Minutos estudados</span>
+        <span class="hint">últimos 30 dias</span>
+      </h2>
+      <div class="chart-box"><canvas id="chart-hist"></canvas></div>
+    </div>
+  </section>
+
+  <section class="cronograma">
+    <h2 class="section-title">
+      <span class="title-left"><svg class="icon" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="4"/><path d="M3 10h18"/><path d="M8 3v4M16 3v4"/></svg> Cronograma de estudos</span>
+      <span class="hint">rotina semanal</span>
+    </h2>
+    <div class="schedule-grid" id="schedule-grid"></div>
+  </section>
+
+  <section class="vocab">
+    <h2 class="section-title">
+      <span class="title-left"><svg class="icon" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="13" rx="3"/><path d="M7 20h10"/></svg> Vocabulário</span>
+      <span class="hint">flashcards — clique para editar</span>
+    </h2>
+    <div class="flash-grid" id="flash-grid"></div>
+    <button class="btn small add-row" id="btn-add-vocab" style="margin-top:18px">
+      <svg class="icon" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg> adicionar palavra
+    </button>
+  </section>
+
+  <section class="lower-grid">
+    <div class="panel">
+      <h2 class="section-title">
+        <span class="title-left"><svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="0.6" fill="currentColor"/></svg> Metas</span>
+        <span class="hint">de médio prazo</span>
+      </h2>
+      <div id="goals"></div>
+      <button class="btn small add-row" id="btn-add-goal" style="margin-top:8px">
+        <svg class="icon" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg> adicionar meta
+      </button>
+    </div>
+    <div class="panel">
+      <h2 class="section-title">
+        <span class="title-left"><svg class="icon" viewBox="0 0 24 24"><path d="M4 20l4-1 10-10-3-3L5 16l-1 4Z"/></svg> Diário de estudos</span>
+        <span class="hint">reflexões, dificuldades, vitórias</span>
+      </h2>
+      <textarea id="diario" placeholder="Ex.: hoje entendi finalmente o uso de そうです; preciso revisar phrasal verbs com 'up' amanhã..."></textarea>
+    </div>
+  </section>
+
+  <footer>
+    <span>Arquivo local — nenhum dado é enviado a servidores.</span>
+    <span id="last-edit">—</span>
+  </footer>
+
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  const IDIOMAS = ['Inglês','Espanhol','Japonês','Francês'];
+  const IDIOMA_COLORS = { 'Inglês':'#82AACB', 'Espanhol':'#E7C468', 'Japonês':'#E2836B', 'Francês':'#8FBF8A' };
+  const DIAS = ['Segunda','Terça','Quarta','Quinta','Sexta','Sábado','Domingo'];
+  const NIVEIS = ['Novo','Aprendendo','Dominado'];
+  const NIVEL_CLASS = { 'Novo':'nivel-novo', 'Aprendendo':'nivel-aprendendo', 'Dominado':'nivel-dominado' };
+
+  let state = {
+    streakDays: 47,
+    dailyGoalMinutes: 45,
+    todayMinutes: 32,
+    studyLog: [],
+    schedule: [
+      { dia:'Segunda', horario:'07:00', idioma:'Inglês', atividade:'Escuta ativa (podcast)', duracao:20 },
+      { dia:'Segunda', horario:'19:30', idioma:'Japonês', atividade:'Kanji e vocabulário novo', duracao:30 },
+      { dia:'Terça', horario:'07:00', idioma:'Inglês', atividade:'Gramática', duracao:20 },
+      { dia:'Quarta', horario:'19:30', idioma:'Espanhol', atividade:'Conversação (intercâmbio)', duracao:40 },
+      { dia:'Quinta', horario:'07:00', idioma:'Inglês', atividade:'Leitura', duracao:20 },
+      { dia:'Sexta', horario:'19:30', idioma:'Japonês', atividade:'Revisão SRS', duracao:25 },
+      { dia:'Sábado', horario:'10:00', idioma:'Francês', atividade:'Curso online', duracao:45 },
+      { dia:'Domingo', horario:'18:00', idioma:'Inglês', atividade:'Revisão geral da semana', duracao:30 }
+    ],
+    vocab: [
+      { palavra:'ubiquitous', traducao:'onipresente', idioma:'Inglês', nivel:'Aprendendo', revisao:'2026-09-12' },
+      { palavra:'nevertheless', traducao:'no entanto', idioma:'Inglês', nivel:'Dominado', revisao:'2026-10-02' },
+      { palavra:'sin embargo', traducao:'no entanto', idioma:'Espanhol', nivel:'Dominado', revisao:'2026-09-25' },
+      { palavra:'madrugar', traducao:'acordar cedo', idioma:'Espanhol', nivel:'Aprendendo', revisao:'2026-09-11' },
+      { palavra:'却って', traducao:'pelo contrário', idioma:'Japonês', nivel:'Novo', revisao:'2026-09-10' },
+      { palavra:'とりあえず', traducao:'por enquanto', idioma:'Japonês', nivel:'Aprendendo', revisao:'2026-09-13' },
+      { palavra:'néanmoins', traducao:'no entanto', idioma:'Francês', nivel:'Novo', revisao:'2026-09-10' },
+      { palavra:'davantage', traducao:'mais ainda', idioma:'Francês', nivel:'Aprendendo', revisao:'2026-09-15' }
+    ],
+    goals: [
+      { meta:'Atingir nível B2 em inglês', prazo:'dez/2026', progresso:65 },
+      { meta:'500 palavras ativas em espanhol', prazo:'nov/2026', progresso:40 },
+      { meta:'Passar no JLPT N4', prazo:'jul/2027', progresso:15 }
+    ],
+    diario: '',
+    history: null
+  };
+
+  function localISODate(date = new Date()){
+    const d = new Date(date);
+    const y = d.getFullYear();
+    const m = String(d.getMonth()+1).padStart(2,'0');
+    const day = String(d.getDate()).padStart(2,'0');
+    return `${y}-${m}-${day}`;
+  }
+
+  const todayISO = localISODate();
+
+  function normalizeStudyLog(){
+    if(!Array.isArray(state.studyLog)) state.studyLog = [];
+
+    // Compatibilidade com versões anteriores:
+    // se ainda não existe histórico, transforma o tempo atual em um registro real de hoje.
+    if(state.studyLog.length === 0 && Number(state.todayMinutes) > 0){
+      state.studyLog.push({
+        data: todayISO,
+        minutos: Number(state.todayMinutes),
+        horario: new Date().toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'})
+      });
+    }
+
+    state.studyLog = state.studyLog.filter(r =>
+      r &&
+      typeof r.data === 'string' &&
+      /^\d{4}-\d{2}-\d{2}$/.test(r.data) &&
+      Number(r.minutos) > 0
+    );
+  }
+
+  function getDailyMinutes(dateISO){
+    return state.studyLog
+      .filter(r => r.data === dateISO)
+      .reduce((sum, r) => sum + (Number(r.minutos) || 0), 0);
+  }
+
+  function rebuildTodayMinutes(){
+    state.todayMinutes = getDailyMinutes(todayISO);
+  }
+
+  function updateStreak(){
+    const studiedDates = new Set(
+      state.studyLog
+        .filter(r => Number(r.minutos) > 0)
+        .map(r => r.data)
+    );
+
+    let streak = 0;
+    const d = new Date();
+    d.setHours(12,0,0,0);
+
+    // Enquanto o usuário ainda não estudou hoje, a sequência continua
+    // sendo calculada a partir de ontem.
+    if(!studiedDates.has(todayISO)){
+      d.setDate(d.getDate() - 1);
+    }
+
+    while(studiedDates.has(localISODate(d))){
+      streak++;
+      d.setDate(d.getDate() - 1);
+    }
+
+    state.streakDays = streak;
+  }
+
+  function dateDaysAgo(daysAgo){
+    const d = new Date();
+    d.setHours(12,0,0,0);
+    d.setDate(d.getDate() - daysAgo);
+    return localISODate(d);
+  }
+
+  function buildHistory(){
+    normalizeStudyLog();
+
+    const history = [];
+    for(let daysAgo = 29; daysAgo >= 0; daysAgo--){
+      const date = dateDaysAgo(daysAgo);
+      history.push({
+        date,
+        minutes: getDailyMinutes(date)
+      });
+    }
+    return history;
+  }
+
+  let allocChart, histChart;
+
+  function render(){
+    renderHero();
+    renderSchedule();
+    renderVocab();
+    renderAllocation();
+    renderHistory();
+    renderGoals();
+    document.getElementById('diario').value = state.diario;
+  }
+
+  function renderHero(){
+    rebuildTodayMinutes();
+    updateStreak();
+
+    document.getElementById('hero-streak').innerHTML =
+      state.streakDays + '<span class="unit">dias seguidos</span>';
+
+    // Palavras dominadas = palavras cujo nível está marcado como "Dominado".
+    const mastered = state.vocab.filter(v => v.nivel === 'Dominado').length;
+    document.getElementById('hero-mastered').textContent = mastered;
+
+    // Para revisar hoje = palavras cuja data de revisão é hoje ou já passou.
+    const dueToday = state.vocab.filter(v => v.revisao && v.revisao <= todayISO).length;
+    document.getElementById('hero-review').textContent = dueToday;
+
+    // Idiomas ativos = quantidade de idiomas que possuem pelo menos uma palavra.
+    const langsAtivos = new Set(
+      state.vocab
+        .map(v => v.idioma)
+        .filter(Boolean)
+    ).size;
+    document.getElementById('hero-langs').textContent = langsAtivos;
+
+    const pct = state.dailyGoalMinutes > 0
+      ? Math.min(100, Math.round(state.todayMinutes / state.dailyGoalMinutes * 100))
+      : 0;
+
+    document.getElementById('goal-today-text').textContent =
+      formatMinutes(state.todayMinutes) + ' / ' + formatMinutes(state.dailyGoalMinutes);
+
+    document.getElementById('goal-today-fill').style.width = pct + '%';
+
+    const todayTime = document.getElementById('hero-today-time');
+    if(todayTime) todayTime.textContent = formatMinutes(state.todayMinutes);
+  }
+
+  function langDot(idioma){
+    return `<span class="dot" style="background:${IDIOMA_COLORS[idioma]}"></span>`;
+  }
+
+  function renderSchedule(){
+    const grid = document.getElementById('schedule-grid');
+    grid.innerHTML = DIAS.map(dia=>{
+      const sessions = state.schedule
+        .map((s,i)=>({...s, i}))
+        .filter(s=>s.dia===dia)
+        .sort((a,b)=> a.horario.localeCompare(b.horario));
+      return `
+        <div class="day-card">
+          <h3><svg class="icon" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="4"/><path d="M3 10h18"/></svg> ${dia}</h3>
+          ${sessions.map(s=>`
+            <div class="session">
+              <button class="row-del" data-del="${s.i}" aria-label="Remover sessão">✕</button>
+              <div class="row1">
+                <input class="time" data-i="${s.i}" data-f="horario" value="${s.horario}">
+                <span class="dur" data-i="${s.i}" data-f="duracao" contenteditable="false">${s.duracao} min</span>
+              </div>
+              <input class="activity" data-i="${s.i}" data-f="atividade" value="${s.atividade}">
+              <select class="lang-select" data-i="${s.i}" data-f="idioma" style="color:${IDIOMA_COLORS[s.idioma]}">
+                ${IDIOMAS.map(l=>`<option value="${l}" ${l===s.idioma?'selected':''}>${l}</option>`).join('')}
+              </select>
+            </div>
+          `).join('')}
+          <button class="day-add" data-addday="${dia}">+ sessão</button>
+        </div>
+      `;
+    }).join('');
+
+    grid.querySelectorAll('input[data-f], select[data-f]').forEach(el=>{
+      el.addEventListener('change', (e)=>{
+        const i = Number(e.target.dataset.i), f = e.target.dataset.f;
+        state.schedule[i][f] = e.target.value;
+        touch(); render();
+      });
+    });
+    grid.querySelectorAll('[data-del]').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        state.schedule.splice(Number(btn.dataset.del),1);
+        touch(); render();
+      });
+    });
+    grid.querySelectorAll('[data-addday]').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        state.schedule.push({ dia:btn.dataset.addday, horario:'07:00', idioma:'Inglês', atividade:'Nova sessão', duracao:20 });
+        touch(); render();
+      });
+    });
+  }
+
+  function renderVocab(){
+    const grid = document.getElementById('flash-grid');
+    grid.innerHTML = state.vocab.map((v,i)=>{
+      const due = v.revisao <= todayISO;
+      return `
+        <div class="flashcard">
+          <div class="flash-top">
+            <div class="flash-pills">
+              <span class="nivel-pill ${NIVEL_CLASS[v.nivel]}">
+                <select class="nivel-select" data-i="${i}" data-f="nivel" style="color:inherit">
+                  ${NIVEIS.map(n=>`<option value="${n}" ${n===v.nivel?'selected':''}>${n}</option>`).join('')}
+                </select>
+              </span>
+            </div>
+            <button class="row-del" data-del="${i}" aria-label="Remover palavra">✕</button>
+          </div>
+          <input class="word" data-i="${i}" data-f="palavra" value="${v.palavra}">
+          <input class="trad" data-i="${i}" data-f="traducao" value="${v.traducao}">
+          <div class="flash-bottom">
+            <select class="idioma-select" data-i="${i}" data-f="idioma" style="color:${IDIOMA_COLORS[v.idioma]}">
+              ${IDIOMAS.map(l=>`<option value="${l}" ${l===v.idioma?'selected':''}>${l}</option>`).join('')}
+            </select>
+            <input class="${due?'due':''}" type="date" data-i="${i}" data-f="revisao" value="${v.revisao}">
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    grid.querySelectorAll('[data-f]').forEach(el=>{
+      el.addEventListener('change', (e)=>{
+        const i = Number(e.target.dataset.i), f = e.target.dataset.f;
+        state.vocab[i][f] = e.target.value;
+        touch(); render();
+      });
+    });
+    grid.querySelectorAll('[data-del]').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        state.vocab.splice(Number(btn.dataset.del),1);
+        touch(); render();
+      });
+    });
+  }
+
+  function renderAllocation(){
+    const totals = {};
+    IDIOMAS.forEach(l=>totals[l]=0);
+    state.vocab.forEach(v=> totals[v.idioma] = (totals[v.idioma]||0) + 1);
+    const labels = IDIOMAS.filter(l=>totals[l]>0);
+    const data = labels.map(l=>totals[l]);
+    const colors = labels.map(l=>IDIOMA_COLORS[l]);
+
+    const ctx = document.getElementById('chart-alloc');
+    if(allocChart) allocChart.destroy();
+    allocChart = new Chart(ctx, {
+      type:'doughnut',
+      data:{ labels, datasets:[{ data, backgroundColor:colors, borderColor:'#25392F', borderWidth:3 }] },
+      options:{ cutout:'68%', plugins:{ legend:{display:false}, tooltip:{
+        callbacks:{ label:(c)=> ' ' + c.label + ': ' + c.raw + ' palavra(s)' }
+      }}}
+    });
+
+    const legend = document.getElementById('alloc-legend');
+    legend.innerHTML = labels.map((l,idx)=>
+      `<span><span class="dot" style="background:${colors[idx]}"></span>${l} · ${data[idx]}</span>`
+    ).join('');
+  }
+
+  function renderHistory(){
+    state.history = buildHistory();
+
+    const labels = state.history.map(item => {
+      const [,m,d] = item.date.split('-');
+      return d + '/' + m;
+    });
+
+    const data = state.history.map(item => item.minutes);
+
+    const ctx = document.getElementById('chart-hist');
+    if(histChart) histChart.destroy();
+
+    histChart = new Chart(ctx, {
+      type:'line',
+      data:{
+        labels,
+        datasets:[{
+          data,
+          borderColor:'#E7C468',
+          backgroundColor:'rgba(231,196,104,0.10)',
+          fill:true,
+          tension:0.35,
+          pointRadius:3,
+          pointHoverRadius:5,
+          borderWidth:2.5
+        }]
+      },
+      options:{
+        responsive:true,
+        maintainAspectRatio:false,
+        plugins:{
+          legend:{display:false},
+          tooltip:{
+            callbacks:{
+              title:(items)=>{
+                const item = state.history[items[0].dataIndex];
+                const [y,m,d] = item.date.split('-');
+                return d + '/' + m + '/' + y;
+              },
+              label:(c)=> ' ' + Math.round(c.raw) + ' min estudados'
+            }
+          }
+        },
+        scales:{
+          x:{
+            display:true,
+            ticks:{
+              color:'#71857A',
+              font:{size:9},
+              maxTicksLimit:8
+            }
+          },
+          y:{
+            beginAtZero:true,
+            grid:{color:'rgba(237,234,224,0.06)'},
+            ticks:{
+              color:'#71857A',
+              font:{size:10},
+              callback:(v)=> v + ' min'
+            }
+          }
+        }
+      }
+    });
+  }
+
+  function renderGoals(){
+    const el = document.getElementById('goals');
+    el.innerHTML = state.goals.map((g,i)=>`
+      <div class="goal-item">
+        <div class="goal-top">
+          <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/></svg>
+          <input class="goal-name" data-i="${i}" data-f="meta" value="${g.meta}">
+          <input class="goal-prazo" data-i="${i}" data-f="prazo" value="${g.prazo}">
+          <button class="row-del" data-del="${i}" aria-label="Remover meta">✕</button>
+        </div>
+        <div class="goal-bar-row">
+          <input type="range" min="0" max="100" value="${g.progresso}" data-i="${i}" data-f="progresso">
+          <span class="pct">${g.progresso}%</span>
+        </div>
+      </div>
+    `).join('');
+    el.querySelectorAll('[data-f]').forEach(input=>{
+      const evt = input.type==='range' ? 'input' : 'change';
+      input.addEventListener(evt, (e)=>{
+        const i = Number(e.target.dataset.i), f = e.target.dataset.f;
+        let val = e.target.value;
+        if(f==='progresso') val = parseInt(val,10);
+        state.goals[i][f] = val;
+        touch();
+        if(f==='progresso'){
+          e.target.parentElement.querySelector('.pct').textContent = val+'%';
+        } else {
+          render();
+        }
+      });
+    });
+    el.querySelectorAll('[data-del]').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        state.goals.splice(Number(btn.dataset.del),1);
+        touch(); render();
+      });
+    });
+  }
+
+  function formatMinutes(total){
+    total = Math.max(0, Math.round(Number(total) || 0));
+    const h = Math.floor(total / 60);
+    const m = total % 60;
+    if(h && m) return h + 'h ' + m + 'min';
+    if(h) return h + 'h';
+    return m + 'min';
+  }
+
+  function registerStudy(){
+    normalizeStudyLog();
+
+    const hoursEl = document.getElementById('study-hours');
+    const minutesEl = document.getElementById('study-minutes');
+
+    let hours = Math.max(0, parseInt(hoursEl.value, 10) || 0);
+    let minutes = Math.max(0, parseInt(minutesEl.value, 10) || 0);
+
+    // Ex.: 1h + 90min = 2h30min.
+    hours += Math.floor(minutes / 60);
+    minutes = minutes % 60;
+
+    const added = hours * 60 + minutes;
+
+    if(added <= 0){
+      alert('Informe pelo menos 1 minuto de estudo.');
+      return;
+    }
+
+    state.studyLog.push({
+      data: localISODate(),
+      minutos: added,
+      horario: new Date().toLocaleTimeString('pt-BR', {
+        hour:'2-digit',
+        minute:'2-digit'
+      })
+    });
+
+    rebuildTodayMinutes();
+    updateStreak();
+
+    hoursEl.value = '';
+    minutesEl.value = '';
+
+    touch();
+    render();
+  }
+
+  function touch(){
+    document.getElementById('last-edit').textContent = 'última alteração — ' + new Date().toLocaleTimeString('pt-BR');
+  }
+
+  document.getElementById('btn-register-study').addEventListener('click', registerStudy);
+
+  ['study-hours','study-minutes'].forEach(id=>{
+    document.getElementById(id).addEventListener('keydown', (e)=>{
+      if(e.key === 'Enter') registerStudy();
+    });
+  });
+
+  document.getElementById('btn-add-vocab').addEventListener('click', ()=>{
+    state.vocab.push({ palavra:'nova palavra', traducao:'', idioma:'Inglês', nivel:'Novo', revisao:todayISO });
+    touch(); render();
+  });
+
+  document.getElementById('btn-add-goal').addEventListener('click', ()=>{
+    state.goals.push({ meta:'Nova meta', prazo:'—', progresso:0 });
+    touch(); render();
+  });
+
+  document.getElementById('diario').addEventListener('input', (e)=>{
+    state.diario = e.target.value;
+    touch();
+  });
+
+  document.getElementById('btn-export').addEventListener('click', ()=>{
+    const blob = new Blob([JSON.stringify(state, null, 2)], {type:'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'fluencia-dados-' + new Date().toISOString().slice(0,10) + '.json';
+    a.click();
+    URL.revokeObjectURL(url);
+  });
+
+  document.getElementById('btn-import').addEventListener('click', ()=>{
+    document.getElementById('file-input').click();
+  });
+  document.getElementById('file-input').addEventListener('change', (e)=>{
+    const file = e.target.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev)=>{
+      try{
+        const parsed = JSON.parse(ev.target.result);
+        if(parsed.vocab){
+          state = parsed;
+          if(!Array.isArray(state.studyLog)) state.studyLog = [];
+          if(typeof state.todayMinutes !== 'number') state.todayMinutes = 0;
+        }
+        touch(); render();
+      }catch(err){
+        alert('Não foi possível ler este arquivo. Verifique se é um export do Fluência.');
+      }
+    };
+    reader.readAsText(file);
+  });
+
+  document.getElementById('today-date').textContent = new Date().toLocaleDateString('pt-BR', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+
+  normalizeStudyLog();
+  rebuildTodayMinutes();
+  updateStreak();
+  render();
+})();
+</script>
+</body>
+</html>
